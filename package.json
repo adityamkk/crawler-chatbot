@@ -6,11 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
-    "llama3": "ollama serve",
-    "stop-llama3": "ollama stop llama3",
+    "ollama": "ollama serve",
+    "stop-ollama": "ollama stop",
     "qdrant": "docker start qdrant",
     "stop-qdrant": "docker stop qdrant",
     "start": "npx tsc && node dist/index.js",
+    "ingest": "npx tsc && node dist/ingest.js",
     "build-qdrant": "docker run -d --name qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage qdrant/qdrant"
   },
   "keywords": [],
@@ -19,19 +20,21 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^22.19.6",
-    "eslint": "^9.39.2",
+    "eslint": "^4.0.0",
     "prettier": "^3.8.0",
     "ts-node": "^1.7.1",
     "typescript": "^5.6.3"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.27",
+    "@langchain/textsplitters": "^1.0.1",
     "@qdrant/js-client-rest": "^1.16.2",
     "@types/express": "^5.0.6",
     "axios": "^1.13.5",
     "cheerio": "^1.1.0",
     "crawlee": "^3.15.3",
     "express": "^5.2.1",
-    "langchain": "^1.2.24",
+    "langchain": "^1.2.25",
     "ollama": "^0.6.3"
   }
 }
