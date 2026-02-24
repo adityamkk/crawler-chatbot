@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/localhost/6333"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  initdb:
+    build: .
+    container_name: initdb
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    environment:
+      QDRANT_URL: http://qdrant:6333
+    command: ["node", "dist/initdb.js"]
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-server
+    depends_on:
+      initdb:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_URL=http://ollama:11434
+    ports:
+      - "3000:3000"
+
+  ingest-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.ingest
+    container_name: rag-ingest
+    depends_on:
+      initdb:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_URL=http://ollama:11434
+
+volumes:
+  qdrant_storage:
+  ollama_data:

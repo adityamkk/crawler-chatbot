@@ -1,34 +1,20 @@
 import express from 'express';
-import axios from 'axios';
 import { Ollama } from 'ollama';
 import { QdrantClient } from "@qdrant/js-client-rest";
+import { PORT, DB, embed } from './shared.js'
 
-const OLLAMA_PORT = 11434;
-const QDRANT_PORT = 6333;
-const ollama = new Ollama({ host: `http://localhost:${OLLAMA_PORT}` });
-const qdrant = new QdrantClient({
-  url: `http://localhost:${QDRANT_PORT}`,
-});
+const ollama = new Ollama({ host: process.env.OLLAMA_URL as string }); //`http://localhost:${OLLAMA_PORT}`
+const qdrant = new QdrantClient({ url: process.env.QDRANT_URL as string }); //`http://localhost:${QDRANT_PORT}`
 const app = express();
-const PORT = 3000;
 
 app.use(express.json());
-
-async function embed(text: string): Promise<number[]> {
-  const response = await axios.post(`http://localhost:${OLLAMA_PORT}/api/embeddings`, {
-    model: "nomic-embed-text",
-    prompt: text,
-  });
-
-  return response.data.embedding;
-}
 
 app.post('/api/chat', async (req, res) => {
   const userMessage = req.body.message;
   const embedding = await embed(userMessage);
-  const results = await qdrant.search("webpages", {
+  const results = await qdrant.search(DB, {
     vector: embedding,
-    limit: 5,
+    limit: 3,
   });
 
   const contextChunks = results.map(r => ({

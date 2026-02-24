@@ -1,39 +1,27 @@
-import axios from "axios";
-
-async function embed(text: string): Promise<number[]> {
-  const response = await axios.post("http://localhost:11434/api/embeddings", {
-    model: "nomic-embed-text",
-    prompt: text,
-  });
-
-  return response.data.embedding;
-}
-
+import { embed } from './shared.js'
 import { QdrantClient } from "@qdrant/js-client-rest";
-
-const qdrant = new QdrantClient({
-  url: "http://localhost:6333",
-});
-
-
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { CheerioCrawler } from "crawlee";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
+
+const qdrant = new QdrantClient({ url: process.env.QDRANT_URL as string }); //`http://localhost:${QDRANT_PORT}`
 
 const splitter = new RecursiveCharacterTextSplitter({
   chunkSize: 1000,
   chunkOverlap: 200,
 });
 
-
-import { CheerioCrawler } from "crawlee";
-import crypto from "crypto";
-
 const crawler = new CheerioCrawler({
+  maxConcurrency: 10,
   maxRequestsPerMinute: 60,
-  requestHandlerTimeoutSecs: 60,
+  maxRequestRetries: 2,
+  requestHandlerTimeoutSecs: 10,
   ignoreSslErrors: true,
   async requestHandler({ request, $, enqueueLinks }) {
     console.log("Processing:", request.url);
-
+    // TODO: Parallelize this request handler
     const text = $("body").text();
 
     if (!text || text.length < 300) return;
@@ -97,5 +85,10 @@ const crawler = new CheerioCrawler({
   ],
 });
 
-await crawler.run(["https://www.anydb.com"]);
-console.log("Ingestion complete.");
+// Load config
+const configPath = path.join(path.dirname(process.cwd()), "config.json");
+const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+
+await crawler.run(config.sites);
+console.log("Ingestion complete, exiting process.");
+process.exit(0); // force container to exit after ingestion
